@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+
+{% block body_id %}trida-detail-page{% endblock %}
+
+{% block title %}{{ trida_nazev }}{% endblock %}
+
+{% block content %}
+<h1>{{ trida_nazev }}</h1>
+
+{% if not chlapci and not divky %}
+    <p>Žádní žáci v této třídě.</p>
+{% else %}
+    <!-- ✅ Kontejner pro obsah třídy - používá existující třídy -->
+    <div class="content-detail_tridy">
+        <!-- ✅ Levá část - Chlapci -->
+        <div class="sloupec">
+            <h2>Chlapci 👦</h2>
+            {% if chlapci %}
+                <ul>
+                    {% for zak in chlapci %}
+                        <li>
+                            <a href="{{ url_for('detail_zaka', zak_id=zak.id, rok=vybrany_rok) }}">{{ zak.prijmeni }} {{ zak.jmeno }}</a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p>V této třídě nejsou žádní chlapci.</p>
+            {% endif %}
+        </div>
+
+        <!-- ✅ Obrázek mezi chlapci a dívkami -->
+        <div class="logo-trida-container-detail">
+            <img src="{{ url_for('static', filename='logo_detail_tridy.jpg') }}" alt="Třída {{ trida_nazev }}" class="logo-trida">
+        </div>
+
+        <!-- ✅ Pravá část - Dívky -->
+        <div class="sloupec">
+            <h2>Dívky 👧</h2>
+            {% if divky %}
+                <ul>
+                    {% for zak in divky %}
+                        <li>
+                            <a href="{{ url_for('detail_zaka', zak_id=zak.id, rok=vybrany_rok) }}">{{ zak.prijmeni }} {{ zak.jmeno }}</a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p>V této třídě nejsou žádné dívky.</p>
+            {% endif %}
+        </div>
+    </div>
+{% endif %}
+{% endblock %}

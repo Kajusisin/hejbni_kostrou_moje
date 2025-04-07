@@ -1,0 +1,447 @@
+{% extends 'base.html' %}
+
+{% block body_id %}discipliny-page{% endblock %}
+
+{% block title %}Disciplíny{% endblock %}
+
+{% block content %}
+<h1>Seznam disciplín</h1>
+
+<div class="content-discipliny">
+    <!-- Logo disciplín -->
+    <div class="logo-discipliny-container">
+        <img src="{{ url_for('static', filename='logo_discipliny.jpg') }}" alt="Disciplíny" class="logo-discipliny">
+    </div>
+    
+    <!-- Filtr školního roku -->
+    <div class="discipliny-filter">
+        <label for="discipliny-skolni-rok">Školní rok:</label>
+        <select id="discipliny-skolni-rok" name="discipliny-skolni-rok">
+            {% for rok in skolni_roky %}
+                <option value="{{ rok.rok_od }}/{{ rok.rok_do }}" {% if rok.aktualni %}selected{% endif %}>
+                    {{ rok.rok_od }}/{{ rok.rok_do }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <!-- Seznam všech disciplín -->
+    <div class="discipliny-seznam">
+        <div class="accordion-container">
+            {% for disciplina in disciplines %}
+            <div class="accordion-item">
+                <div class="accordion-header" data-discipline-id="{{ disciplina.id }}">
+                    <span class="accordion-title">{{ disciplina.nazev }}</span>
+                    <span class="accordion-icon">▼</span>
+                </div>
+                <div class="accordion-content">
+                    <div class="loading-indicator">Načítání...</div>
+                    <!-- Zde se dynamicky načtou třídy při rozkliknutí disciplíny -->
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Modální okno pro zápis výkonů -->
+    <div id="performanceModal" class="modal">
+        <div class="modal-content performance-modal-content">
+            <span class="close">&times;</span>
+            <h2 id="modal-title">Zápis výkonů - <span id="modal-discipline"></span></h2>
+            <h3 id="modal-class"></h3>
+            
+            <div class="performance-table-container">
+                <table id="performance-table" class="performance-table">
+                    <thead>
+                        <tr>
+                            <th>Příjmení</th>
+                            <th>Jméno</th>
+                            <th>Výkon</th>
+                            <th>Jednotka</th>
+                            <th>Nápověda</th>
+                            <th>Body</th>
+                        </tr>
+                    </thead>
+                    <tbody id="performance-table-body">
+                        <!-- Zde se dynamicky načtou žáci a jejich výkony -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="modal-buttons">
+                <button id="save-performances" class="submit-btn">Uložit změny</button>
+                <div id="save-status" class="save-status"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Inicializace školního roku
+    const skolniRokSelect = document.getElementById('discipliny-skolni-rok');
+    let selectedSkolniRok = skolniRokSelect.value;
+    
+    // Načtení localStorage školního roku, pokud existuje
+    const savedSkolniRok = localStorage.getItem('skolniRok');
+    if (savedSkolniRok) {
+        skolniRokSelect.value = savedSkolniRok;
+        selectedSkolniRok = savedSkolniRok;
+    }
+    
+    // Události pro akordeon (rozbalování/sbalování disciplín)
+    const accordionHeaders = document.querySelectorAll('.accordion-header');
+    accordionHeaders.forEach(header => {
+        header.addEventListener('click', function() {
+            // Toggle active třídy pro změnu ikony
+            this.classList.toggle('active');
+            
+            // Získání discipline ID
+            const disciplineId = this.getAttribute('data-discipline-id');
+            
+            // Získání obsahu aktuálního akordeonu
+            const content = this.nextElementSibling;
+            
+            // Toggle zobrazení obsahu
+            if (content.style.display === 'block') {
+                content.style.display = 'none';
+            } else {
+                content.style.display = 'block';
+                
+                // Načtení tříd pro danou disciplínu a školní rok
+                loadClassesForDiscipline(disciplineId, selectedSkolniRok, content);
+            }
+        });
+    });
+    
+    // Událost pro změnu školního roku
+    skolniRokSelect.addEventListener('change', function() {
+        selectedSkolniRok = this.value;
+        
+        // Aktualizace localStorage
+        localStorage.setItem('skolniRok', selectedSkolniRok);
+        
+        // Aktualizace textu v pravém horním rohu
+        const skolniRokText = document.getElementById('skolni-rok-text');
+        if (skolniRokText) {
+            skolniRokText.innerText = selectedSkolniRok;
+        }
+        
+        // Zavřít všechny otevřené akordeony a resetovat jejich obsah
+        accordionHeaders.forEach(header => {
+            const content = header.nextElementSibling;
+            content.style.display = 'none';
+            content.innerHTML = '<div class="loading-indicator">Načítání...</div>';
+            header.classList.remove('active');
+        });
+        
+        // Synchronizace školního roku se serverem
+        fetch('/zmen_skolni_rok', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rok: selectedSkolniRok })
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Školní rok změněn:', data);
+        })
+        .catch(error => {
+            console.error('Chyba při změně školního roku:', error);
+        });
+    });
+    
+    // Funkce pro načtení tříd pro vybranou disciplínu
+    function loadClassesForDiscipline(disciplineId, skolniRok, containerElement) {
+        containerElement.innerHTML = '<div class="loading-indicator">Načítání tříd...</div>';
+        
+        fetch(`/get_classes_for_discipline?discipline_id=${disciplineId}&skolni_rok=${skolniRok}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.classes && data.classes.length > 0) {
+                // Vytvoření HTML pro třídy
+                let classesHtml = '<div class="classes-list">';
+                
+                // Skupiny tříd podle ročníku
+                const rocniky = { 6: [], 7: [], 8: [], 9: [] };
+                
+                // Rozdělení tříd podle ročníků
+                data.classes.forEach(trida => {
+                    const rocnik = parseInt(trida.split('.')[0]);
+                    if (rocniky[rocnik]) {
+                        rocniky[rocnik].push(trida);
+                    }
+                });
+                
+                // Vytvoření HTML pro každý ročník
+                Object.keys(rocniky).forEach(rocnik => {
+                    if (rocniky[rocnik].length > 0) {
+                        classesHtml += `<div class="rocnik-group"><h3>${rocnik}. ročník</h3>`;
+                        
+                        rocniky[rocnik].forEach(trida => {
+                            classesHtml += `
+                                <div class="class-item">
+                                    <div class="class-name">${trida}</div>
+                                    <div class="gender-options">
+                                        <button class="gender-btn" data-discipline-id="${disciplineId}" data-class="${trida}" data-gender="chlapec">Chlapci</button>
+                                        <button class="gender-btn" data-discipline-id="${disciplineId}" data-class="${trida}" data-gender="divka">Dívky</button>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        
+                        classesHtml += '</div>'; // Konec rocnik-group
+                    }
+                });
+                
+                classesHtml += '</div>'; // Konec classes-list
+                containerElement.innerHTML = classesHtml;
+                
+                // Přidání událostí pro tlačítka pohlaví
+                const genderButtons = containerElement.querySelectorAll('.gender-btn');
+                genderButtons.forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const disciplineId = this.getAttribute('data-discipline-id');
+                        const className = this.getAttribute('data-class');
+                        const gender = this.getAttribute('data-gender');
+                        
+                        // Otevření modálního okna pro zápis výkonů
+                        openPerformanceModal(disciplineId, className, gender, skolniRok);
+                    });
+                });
+            } else {
+                containerElement.innerHTML = '<div class="no-data">Žádné třídy nenalezeny pro tuto disciplínu</div>';
+            }
+        })
+        .catch(error => {
+            console.error('Chyba při načítání tříd:', error);
+            containerElement.innerHTML = '<div class="error">Chyba při načítání dat</div>';
+        });
+    }
+    
+    // Funkce pro otevření modálního okna se zápisem výkonů
+    function openPerformanceModal(disciplineId, className, gender, skolniRok) {
+        const modal = document.getElementById('performanceModal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalDiscipline = document.getElementById('modal-discipline');
+        const modalClass = document.getElementById('modal-class');
+        const tableBody = document.getElementById('performance-table-body');
+        const saveStatus = document.getElementById('save-status');
+        
+        // Čištění předchozích dat
+        tableBody.innerHTML = '<tr><td colspan="6">Načítání žáků...</td></tr>';
+        saveStatus.innerHTML = '';
+        saveStatus.className = '';
+        
+        // Nastavení nadpisů v modálním okně
+        fetch(`/get_discipline_name?discipline_id=${disciplineId}`)
+        .then(response => response.json())
+        .then(data => {
+            modalDiscipline.textContent = data.name;
+        });
+        
+        modalClass.textContent = `${className} - ${gender === 'chlapec' ? 'chlapci' : 'dívky'} (${skolniRok})`;
+        
+        // Načtení žáků a jejich výkonů
+        fetch(`/get_students_performances?discipline_id=${disciplineId}&class=${className}&gender=${gender}&skolni_rok=${skolniRok}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.students && data.students.length > 0) {
+                let tableHtml = '';
+                
+                data.students.forEach(student => {
+                    tableHtml += `
+                        <tr>
+                            <td>${student.prijmeni}</td>
+                            <td>${student.jmeno}</td>
+                            <td>
+                                <input type="text" 
+                                    class="performance-input" 
+                                    data-zak-id="${student.id}" 
+                                    data-discipline-id="${disciplineId}" 
+                                    data-rocnik="${className.split('.')[0]}" 
+                                    data-skolni-rok="${skolniRok.split('/')[0]}"
+                                    value="${student.vykon || ''}"
+                                    inputmode="decimal"
+                                />
+                            </td>
+                            <td>${data.jednotka || ''}</td>
+                            <td>${data.napoveda || ''}</td>
+                            <td class="body-cell" id="body-${student.id}-${disciplineId}">${student.body || '0'}</td>
+                        </tr>
+                    `;
+                });
+                
+                tableBody.innerHTML = tableHtml;
+                
+                // Události pro inputy výkonů - výpočet bodů při změně a ukládání při opuštění pole
+                const performanceInputs = document.querySelectorAll('.performance-input');
+                performanceInputs.forEach(input => {
+                    // Výpočet bodů při změně vstupu
+                    input.addEventListener('input', async function() {
+                        const zakId = this.getAttribute('data-zak-id');
+                        const disciplineId = this.getAttribute('data-discipline-id');
+                        const vykon = this.value.trim();
+                        const bodyCell = document.getElementById(`body-${zakId}-${disciplineId}`);
+                        
+                        if (vykon === '') {
+                            bodyCell.textContent = '0';
+                            return;
+                        }
+                        
+                        try {
+                            const response = await fetch('/ziskat_body', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    discipline_id: disciplineId,
+                                    vykon: vykon
+                                })
+                            });
+                            
+                            const data = await response.json();
+                            if (response.ok) {
+                                bodyCell.textContent = data.body;
+                                bodyCell.classList.remove('error');
+                            } else {
+                                bodyCell.textContent = 'Chyba';
+                                bodyCell.classList.add('error');
+                            }
+                        } catch (error) {
+                            console.error('Chyba při získávání bodů:', error);
+                            bodyCell.textContent = 'Chyba';
+                            bodyCell.classList.add('error');
+                        }
+                    });
+                    
+                    // Přidání automatického ukládání při ztrátě fokusu
+                    input.addEventListener('blur', async function() {
+                        const zakId = this.getAttribute('data-zak-id');
+                        const disciplineId = this.getAttribute('data-discipline-id');
+                        const rocnik = this.getAttribute('data-rocnik');
+                        const skolniRok = this.getAttribute('data-skolni-rok');
+                        const vykon = this.value.trim();
+                        const bodyCell = document.getElementById(`body-${zakId}-${disciplineId}`);
+                        
+                        // Získání bodů z buňky
+                        const body = bodyCell.textContent !== 'Chyba' ? bodyCell.textContent : null;
+                        
+                        // Automatické ukládání změny
+                        try {
+                            const response = await fetch('/ulozit_vykon', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    zak_id: zakId,
+                                    discipline_id: disciplineId,
+                                    rocnik: rocnik,
+                                    vykon: vykon,
+                                    skolni_rok: skolniRok
+                                })
+                            });
+                            
+                            const result = await response.json();
+                            if (!result.success) {
+                                console.error('Chyba při ukládání výkonu:', result.error);
+                                // Diskrétní indikace chyby - třeba mírné červené orámování
+                                this.style.borderColor = 'red';
+                                setTimeout(() => {
+                                    this.style.borderColor = '';
+                                }, 2000);
+                            }
+                        } catch (error) {
+                            console.error('Chyba při ukládání výkonu:', error);
+                        }
+                    });
+                    
+                    // Ukládání při stisknutí Enter
+                    input.addEventListener('keydown', function(event) {
+                        if (event.key === 'Enter') {
+                            this.blur();  // Ztratí fokus, což aktivuje událost blur
+                        }
+                    });
+                });
+            } else {
+                tableBody.innerHTML = '<tr><td colspan="6">Žádní žáci nenalezeni</td></tr>';
+            }
+        })
+        .catch(error => {
+            console.error('Chyba při načítání dat žáků:', error);
+            tableBody.innerHTML = '<tr><td colspan="6">Chyba při načítání dat</td></tr>';
+        });
+        
+        // Zobrazení modálního okna
+        modal.style.display = 'block';
+        
+        // Tlačítko pro uložení změn
+        const saveButton = document.getElementById('save-performances');
+        saveButton.onclick = function() {
+            const saveStatus = document.getElementById('save-status');
+            saveStatus.innerHTML = 'Ukládání...';
+            saveStatus.className = 'pending';
+            
+            // Získat všechny inputy s výkony
+            const performanceInputs = document.querySelectorAll('.performance-input');
+            const performances = [];
+            
+            performanceInputs.forEach(input => {
+                const zakId = input.getAttribute('data-zak-id');
+                const disciplineId = input.getAttribute('data-discipline-id');
+                const rocnik = input.getAttribute('data-rocnik');
+                const skolniRok = input.getAttribute('data-skolni-rok');
+                const vykon = input.value.trim();
+                const bodyCell = document.getElementById(`body-${zakId}-${disciplineId}`);
+                const body = bodyCell.textContent;
+                
+                // Zahrňme všechny výkony, včetně prázdných (ty způsobí smazání)
+                performances.push({
+                    zak_id: zakId,
+                    discipline_id: disciplineId,
+                    rocnik: rocnik,
+                    vykon: vykon,
+                    body: body !== 'Chyba' ? body : null,
+                    skolni_rok: skolniRok
+                });
+            });
+            
+            // Uložení výkonů na server
+            fetch('/ulozit_vykony_hromadne', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ performances: performances })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    saveStatus.textContent = `✅ Úspěšně uloženo ${data.saved_count} výkonů`;
+                    if (data.error_count > 0) {
+                        saveStatus.textContent += ` (${data.error_count} chyb)`;
+                    }
+                    saveStatus.className = 'success';
+                } else {
+                    saveStatus.textContent = `❌ Chyba při ukládání: ${data.error}`;
+                    saveStatus.className = 'error';
+                }
+            })
+            .catch(error => {
+                console.error('Chyba při ukládání výkonů:', error);
+                saveStatus.textContent = 'Chyba při komunikaci se serverem';
+                saveStatus.className = 'error';
+            });
+        };
+        
+        // Zavření modálního okna
+        const closeBtn = modal.querySelector('.close');
+        closeBtn.onclick = function() {
+            modal.style.display = 'none';
+        };
+        
+        // Zavření kliknutím mimo modální okno
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        };
+    }
+});
+</script>
+{% endblock %}

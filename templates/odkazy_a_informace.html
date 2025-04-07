@@ -1,0 +1,310 @@
+{% extends 'base.html' %}
+
+{% block title %}Odkazy a informace{% endblock %}
+
+{% block content %}
+<h1>Odkazy a informace</h1>
+
+<!-- Obrázek nad obsahem -->
+<div class="image-container">
+    <img src="{{ url_for('static', filename='logo_odkazy.jpg') }}" alt="Logo odkazy" class="logo-odkazy">
+</div>
+
+<!-- Zobrazení flash zpráv -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <div class="flash-messages">
+            {% for category, message in messages %}
+                <div class="flash-message {{ category }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
+
+<!-- Hlavní kontejner pro tři sloupce -->
+<div class="odkazy-container">
+    <!-- Levý sloupec - odkazy -->
+    <div class="odkazy-sloupec">
+        <h2>Užitečné odkazy</h2>
+        <div class="odkazy-obsah">
+            {% for kategorie, odkazy in odkazy_podle_kategorii.items() %}
+                <div class="odkaz-kategorie">
+                    <h3>{{ kategorie }}</h3>
+                    <ul>
+                        {% for odkaz in odkazy %}
+                            <li>
+                                <a href="{{ odkaz.url }}" target="_blank">{{ odkaz.nazev }}</a>
+                                {% if odkaz.id %}
+                                <a href="{{ url_for('smazat_odkaz', odkaz_id=odkaz.id) }}" class="delete-btn" title="Smazat odkaz">×</a>
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endfor %}
+            
+            <!-- Tlačítko pro přidání odkazu -->
+            <button id="pridatOdkazBtn" class="pridat-btn">+ Přidat odkaz</button>
+        </div>
+    </div>
+    
+    <!-- Oddělovací čára -->
+    <div class="oddeleni-cary"></div>
+    
+    <!-- Prostřední sloupec - informace -->
+    <div class="odkazy-sloupec">
+        <h2>Informace & Aktuality</h2>
+        <div class="odkazy-obsah">
+            {% if informace %}
+                {% for info in informace %}
+                    <div class="info-item">
+                        <div class="info-text">{{ info.text }}</div>
+                        <div class="info-date">{{ info.date }}</div>
+                        {% if info.id %}
+                        <a href="{{ url_for('smazat_informaci', informace_id=info.id) }}" class="delete-btn" title="Smazat informaci">×</a>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="prazdny-text">Zatím zde nejsou žádné informace.</div>
+            {% endif %}
+            
+            <!-- Tlačítko pro přidání informace -->
+            <button id="pridatInfoBtn" class="pridat-btn">+ Přidat informaci</button>
+        </div>
+    </div>
+    
+    <!-- Oddělovací čára -->
+    <div class="oddeleni-cary"></div>
+    
+    <!-- Pravý sloupec - soubory -->
+    <div class="odkazy-sloupec">
+        <h2>Soubory ke stažení</h2>
+        <div class="odkazy-obsah soubory-seznam">
+            {% if uploaded_files %}
+                <ul>
+                    {% for file_name, file_id in uploaded_files %}
+                        <li>
+                            <a href="{{ url_for('stahnout_soubor', filename=file_name) }}">{{ file_name }}</a>
+                            {% if file_id %}
+                            <a href="{{ url_for('smazat_soubor', soubor_id=file_id) }}" class="delete-btn" title="Smazat soubor">×</a>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <div class="prazdny-text">Zatím zde nejsou žádné soubory ke stažení.</div>
+            {% endif %}
+            
+            <!-- Tlačítko pro nahrání souboru -->
+            <button id="nahratSouborBtn" class="pridat-btn">+ Nahrát soubor</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modální okno pro přidání odkazu -->
+<div id="odkazModal" class="modal">
+    <div class="modal-content">
+        <span class="close" id="zavritOdkaz">&times;</span>
+        <h2>Přidat nový odkaz</h2>
+        <form action="{{ url_for('pridat_odkaz') }}" method="POST">
+            <div class="form-group">
+                <label for="nazev">Název odkazu:</label>
+                <input type="text" id="nazev" name="nazev" required>
+            </div>
+            <div class="form-group">
+                <label for="url">URL adresa:</label>
+                <input type="url" id="url" name="url" required placeholder="https://">
+            </div>
+            <div class="form-group">
+                <label for="kategorie">Kategorie:</label>
+                <select id="kategorie" name="kategorie" required>
+                    {% for kat in kategorie_list %}
+                    <option value="{{ kat }}">{{ kat }}</option>
+                    {% endfor %}
+                    <option value="nová">Nová kategorie...</option>
+                </select>
+            </div>
+            <div class="form-group" id="nova-kategorie" style="display: none;">
+                <label for="nova_kategorie">Název nové kategorie:</label>
+                <input type="text" id="nova_kategorie" name="nova_kategorie">
+            </div>
+            <button type="submit">Přidat odkaz</button>
+        </form>
+    </div>
+</div>
+
+<!-- Modální okno pro přidání informace -->
+<div id="infoModal" class="modal">
+    <div class="modal-content">
+        <span class="close" id="zavritInfo">&times;</span>
+        <h2>Přidat novou informaci</h2>
+        <form action="{{ url_for('pridat_informaci') }}" method="POST">
+            <div class="form-group">
+                <label for="text">Text informace:</label>
+                <textarea id="text" name="text" rows="4" required></textarea>
+            </div>
+            <div class="form-group">
+                <label for="date">Datum:</label>
+                <input type="date" id="date" name="date" value="{{ today_date }}">
+            </div>
+            <button type="submit">Přidat informaci</button>
+        </form>
+    </div>
+</div>
+
+<!-- Modální okno pro nahrání souboru -->
+<div id="souborModal" class="modal">
+    <div class="modal-content">
+        <span class="close" id="zavritSoubor">&times;</span>
+        <h2>Nahrát nový soubor</h2>
+        <form action="{{ url_for('nahrat_soubor') }}" method="POST" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="soubor">Vyberte soubor:</label>
+                <input type="file" id="soubor" name="soubor" required>
+            </div>
+            <div class="form-group">
+                <small>Podporované formáty souborů: PDF, DOCX, PNG, JPG, JPEG, GIF, XLSX, PPTX, TXT, CSV, ZIP, RAR, MP4, MP3</small>
+            </div>
+            <button type="submit">Nahrát soubor</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Skript přímo v šabloně - podobně jako funguje v home.html
+    document.addEventListener("DOMContentLoaded", function() {
+        console.log("Inicializace modálních oken v odkazy_a_informace.html");
+        
+        // Referenční proměnné pro modální okna
+        const odkazModal = document.getElementById("odkazModal");
+        const infoModal = document.getElementById("infoModal");
+        const souborModal = document.getElementById("souborModal");
+        
+        // Referenční proměnné pro tlačítka
+        const pridatOdkazBtn = document.getElementById("pridatOdkazBtn");
+        const pridatInfoBtn = document.getElementById("pridatInfoBtn");
+        const nahratSouborBtn = document.getElementById("nahratSouborBtn");
+        
+        // Referenční proměnné pro zavírací tlačítka
+        const zavritOdkaz = document.getElementById("zavritOdkaz");
+        const zavritInfo = document.getElementById("zavritInfo");
+        const zavritSoubor = document.getElementById("zavritSoubor");
+        
+        console.log("Modální okna:", 
+                odkazModal ? "✅ odkazModal OK" : "❌ odkazModal chybí", 
+                infoModal ? "✅ infoModal OK" : "❌ infoModal chybí",
+                souborModal ? "✅ souborModal OK" : "❌ souborModal chybí");
+        
+        console.log("Tlačítka:", 
+                pridatOdkazBtn ? "✅ pridatOdkazBtn OK" : "❌ pridatOdkazBtn chybí",
+                pridatInfoBtn ? "✅ pridatInfoBtn OK" : "❌ pridatInfoBtn chybí",
+                nahratSouborBtn ? "✅ nahratSouborBtn OK" : "❌ nahratSouborBtn chybí");
+        
+        // Funkce pro otevření modálního okna
+        function openModal(modal) {
+            if (modal) {
+                modal.style.display = "block";
+                document.body.classList.add("modal-open");
+                console.log("Modal otevřen:", modal.id);
+            } else {
+                console.error("❌ Nelze otevřít modální okno - neexistuje!");
+            }
+        }
+        
+        // Funkce pro zavření modálního okna
+        function closeModal(modal) {
+            if (modal) {
+                modal.style.display = "none";
+                document.body.classList.remove("modal-open");
+                console.log("Modal zavřen:", modal.id);
+            }
+        }
+        
+        // Přidání událostí pro otevření modálních oken
+        if (pridatOdkazBtn) {
+            pridatOdkazBtn.addEventListener("click", function(e) {
+                e.preventDefault();
+                console.log("Kliknuto na tlačítko přidat odkaz");
+                openModal(odkazModal);
+            });
+        }
+        
+        if (pridatInfoBtn) {
+            pridatInfoBtn.addEventListener("click", function(e) {
+                e.preventDefault();
+                console.log("Kliknuto na tlačítko přidat informaci");
+                openModal(infoModal);
+            });
+        }
+        
+        if (nahratSouborBtn) {
+            nahratSouborBtn.addEventListener("click", function(e) {
+                e.preventDefault();
+                console.log("Kliknuto na tlačítko nahrát soubor");
+                openModal(souborModal);
+            });
+        }
+        
+        // Zavření modálních oken
+        if (zavritOdkaz) {
+            zavritOdkaz.addEventListener("click", function() {
+                closeModal(odkazModal);
+            });
+        }
+        
+        if (zavritInfo) {
+            zavritInfo.addEventListener("click", function() {
+                closeModal(infoModal);
+            });
+        }
+        
+        if (zavritSoubor) {
+            zavritSoubor.addEventListener("click", function() {
+                closeModal(souborModal);
+            });
+        }
+        
+        // Zavření modálních oken kliknutím mimo obsah
+        window.onclick = function(event) {
+            if (event.target === odkazModal) {
+                closeModal(odkazModal);
+            }
+            if (event.target === infoModal) {
+                closeModal(infoModal);
+            }
+            if (event.target === souborModal) {
+                closeModal(souborModal);
+            }
+        };
+        
+        // Přidání kategorie "nová" do výběru
+        const kategorieSelect = document.getElementById("kategorie");
+        const novaKategorieInput = document.getElementById("nova-kategorie");
+        
+        if (kategorieSelect && novaKategorieInput) {
+            kategorieSelect.addEventListener("change", function() {
+                if (this.value === "nová") {
+                    novaKategorieInput.style.display = "block";
+                } else {
+                    novaKategorieInput.style.display = "none";
+                }
+            });
+        }
+        
+        // Globální testovací funkce
+        window.testOpenModal = function(modalName) {
+            console.log("Testovací funkce volána pro:", modalName);
+            if (modalName === 'odkaz') {
+                openModal(odkazModal);
+            } else if (modalName === 'info') {
+                openModal(infoModal);
+            } else if (modalName === 'soubor') {
+                openModal(souborModal);
+            } else {
+                console.error('❌ Neznámý modal:', modalName);
+            }
+        };
+    });
+</script>
+{% endblock %}

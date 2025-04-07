@@ -1,0 +1,276 @@
+{% extends 'base.html' %}
+
+{% block title %}Hejbni kostrou! - Fitness Aplikace pro Základní Školu{% endblock %}
+
+{% block body_id %}home-page{% endblock %}
+
+{% block content %}
+<h1>Vítejte v aplikaci „Hejbni kostrou!" 🦴🏃‍♂️🤸‍♂️</h1>
+
+<div class="menu-container">
+    <div class="skolni-rok-container">
+        <span>Školní rok:</span>
+        <select id="skolniRok" name="skolniRok">
+            {% for rok in skolni_roky %}
+                <option value="{{ rok.rok_od }}/{{ rok.rok_do }}" {% if rok.aktualni %}selected{% endif %}>
+                    {{ rok.rok_od }}/{{ rok.rok_do }}
+                </option>
+            {% endfor %}
+        </select>        
+    </div>    
+</div>
+
+<div>    
+    <a href="/zaci" class="button">Seznam žáků</a>
+    <form action="/vyhledat" method="GET" class="search-container" id="searchForm">
+        <input type="text" id="searchInput" name="query" placeholder="🔍 Vyhledat žáka..."
+            class="search-input" autocomplete="off">
+    </form>          
+    <a href="/tridy" class="button">Třídy</a>
+    <a href="/zebricky_a_statistiky" class="button">Žebříčky a statistiky</a>
+    <a href="/discipliny" class="button">Disciplíny</a>
+    <a href="/odkazy_a_informace" class="button">Odkazy a informace</a>
+    
+    <!-- Přidání tlačítka pro import nových žáků -->
+    <a href="#" id="importNovychZakuBtn" class="button">Import nových žáků</a>
+</div>
+
+<div class="headline-container">
+    <h2>Pohyb je základ zdravého životního stylu, a proto jsme tu! Aplikace je vytvořena pro účely tělesné výchovy na ZŠ Svatopluka Čecha Choceň a je přizpůsobena potřebám učitelů i žáků, aby podpořila dlouhodobý rozvoj pohybových dovedností.</h2>
+</div>
+
+<!-- ✅ Správné rozložení obsahu -->
+<div class="content-container">
+    <!-- Levá část s logem -->
+    <div class="left-side">
+        <div class="logo-hlavni-container">
+            <a href="{{ url_for('home') }}">
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo aplikace" class="logo-hlavni">
+            </a>
+        </div>
+    </div>
+
+    <!-- Pravá část s textem -->
+    <div class="right-side">
+        <div class="info-container">
+            <h3>👦👧 Pro žáky:</h3>
+            <p>Chcete se posouvat vpřed a vidět výsledky? Jste tu správně! Navíc můžete získávat body za vaši snahu! Nezáleží na startovní pozici, důležitý je pokrok!</p>
+
+            <h3>🧑‍🏫 Pro učitele:</h3>
+            <p>Systém vám usnadní evidenci výkonů žáků a jejich monitoring. Žádné papíry<br>a složité přepočty – zde vše najdete přehledně na jednom místě.</p>
+
+            <h3>⬅️ Co zde najdete?</h3>
+            <ul>
+                <li><b>Seznam žáků</b> – Rychlý přístup k výsledkům jednotlivých žáků.</li>
+                <li><b>Třídy</b> – Přehled výkonů celé třídy.</li>
+                <li><b>Žebříčky a statistiky</b> – Statistiky a srovnání nejlepších výkonů.</li>
+                <li><b>Disciplíny</b> – Seznam, zápis a výsledky všech disciplín.</li>
+                <li><b>Odkazy a informace</b> – Užitečné materiály a další informace.</li>
+            </ul>
+
+            <h3>➡️ Jak pokračovat?</h3>
+            <p>Vyberte si z nabídky a začněte sledovat svůj pokrok! 💪</p>
+        </div>
+    </div>
+</div>
+
+<!-- Přidat modální okno pro import žáků před konec obsahu -->
+<div id="importModal" class="modal">
+    <div class="modal-content import-modal-content">
+        <span class="close">&times;</span>
+        <h2>Import nových žáků 6. ročníku</h2>
+        <p>Nahrajte Excel soubor se seznamem nových žáků. Formát musí být stejný jako pro stávající žáky.</p>
+        
+        <form id="importForm" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="excelFile">Vyberte Excel soubor:</label>
+                <input type="file" id="excelFile" name="excelFile" accept=".xlsx, .xls" required>
+            </div>
+            
+            <div class="form-group">
+                <button type="submit" class="submit-btn">Importovat žáky</button>
+            </div>
+        </form>
+        
+        <div id="importStatus"></div>
+    </div>
+</div>
+
+<script>
+    // Kód pro inicializaci interaktivních prvků domovské stránky
+    document.addEventListener("DOMContentLoaded", function() {
+        // Všechen kód zde...
+        let ulozenyRok = localStorage.getItem("skolniRok");
+        // Kód pro výběr školního roku
+        function zmenRok() {
+            let vybranyRok = document.getElementById("skolniRok").value;
+
+            // Uložíme nový školní rok do localStorage
+            localStorage.setItem("skolniRok", vybranyRok);
+
+            // Okamžitě aktualizujeme text v pravém horním rohu na všech stránkách
+            let skolniRokText = document.getElementById("skolni-rok-text");
+            if (skolniRokText) {
+                skolniRokText.innerText = vybranyRok;
+            }
+
+            console.log("Školní rok změněn na:", vybranyRok);
+        }
+
+        // 🆕 Načítání uloženého školního roku při otevření stránky
+        document.addEventListener("DOMContentLoaded", function() {
+            let ulozenyRok = localStorage.getItem("skolniRok");
+            let skolniRokSelect = document.getElementById("skolniRok");
+            let skolniRokText = document.getElementById("skolni-rok-text");
+
+            if (ulozenyRok) {
+                if (skolniRokSelect) {
+                    skolniRokSelect.value = ulozenyRok;
+                }
+
+                if (skolniRokText) {
+                    skolniRokText.innerText = ulozenyRok;
+                }
+
+                console.log("Načtený školní rok z localStorage:", ulozenyRok);
+            }
+        });
+
+        document.addEventListener("DOMContentLoaded", function () {
+            // Najdeme vyhledávací pole
+            let searchInput = document.getElementById("searchInput");
+
+            // Pouze na home stránce resetujeme vyhledávací pole
+            if (searchInput && document.body.id === "home-page") {
+                searchInput.value = ""; // Reset vyhledávání jen pro home.html
+            }
+        });
+
+        window.addEventListener("pageshow", function (event) {
+            let searchInput = document.getElementById("searchInput");
+
+            // Pouze pokud jsme na home.html a prohlížeč načetl stránku z cache
+            if (searchInput && document.body.id === "home-page" && (event.persisted || window.performance.getEntriesByType("navigation")[0].type === "back_forward")) {
+                searchInput.value = "";
+            }
+        });
+
+        // Nutíme prohlížeč neukládat stránku do cache pouze na home.html
+        if (document.body.id === "home-page" && "onpageshow" in window) {
+            window.onpageshow = function (event) {
+                if (event.persisted) {
+                    location.reload(); // Vynutí opětovné načtení stránky
+                }
+            };
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            document.getElementById("skolniRok").addEventListener("change", function() {
+                let novyRok = this.value;
+
+                fetch("/zmen_skolni_rok", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ rok: novyRok })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log("📥 Odpověď z API:", data);  // 👉 Debugging
+
+                    if (data.message) {
+                        alert("✅ " + data.message);
+                        location.reload();
+                    } else if (data.error) {
+                        alert("❌ Chyba při změně školního roku: " + data.error);
+                    } else {
+                        alert("❌ Neznámá chyba při změně školního roku.");
+                    }
+                })
+                .catch(error => {
+                    console.error("❌ Chyba při komunikaci s API:", error);
+                    alert("❌ Chyba při změně školního roku: " + error);
+                }); // 🔹 Tento řádek byl správně uzavřen
+            }); // 🔹 Tady chyběla závorka!
+        });
+
+        // Reference na modal a jeho prvky
+        const modal = document.getElementById("importModal");
+        const importBtn = document.getElementById("importNovychZakuBtn");
+        const closeBtn = document.querySelector(".close");
+        const importForm = document.getElementById("importForm");
+        const importStatus = document.getElementById("importStatus");
+
+        // Otevření modalu
+        importBtn.addEventListener("click", function(e) {
+            e.preventDefault();
+            modal.style.display = "block";
+        });
+
+        // Zavření modalu
+        closeBtn.addEventListener("click", function() {
+            modal.style.display = "none";
+            importStatus.style.display = "none";
+            importForm.reset();
+        });
+
+        // Zavření modalu kliknutím mimo jeho obsah
+        window.addEventListener("click", function(event) {
+            if (event.target == modal) {
+                modal.style.display = "none";
+                importStatus.style.display = "none";
+                importForm.reset();
+            }
+        });
+
+        // Zpracování formuláře pro import žáků
+        importForm.addEventListener("submit", function(e) {
+            e.preventDefault();
+            
+            const fileInput = document.getElementById("excelFile");
+            if (!fileInput.files[0]) {
+                showImportStatus("Vyberte soubor pro import.", "error");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("excelFile", fileInput.files[0]);
+
+            // Zpracování nahrávání a importu
+            importStatus.innerHTML = "Import probíhá, čekejte prosím...";
+            importStatus.className = "";
+            importStatus.style.display = "block";
+
+            fetch("/import_novi_zaci_6_rocniku", {
+                method: "POST",
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showImportStatus(data.message || "Import byl úspěšně dokončen!", "success");
+                } else {
+                    showImportStatus(data.error || "Při importu došlo k chybě.", "error");
+                }
+            })
+            .catch(error => {
+                console.error("Chyba při importu:", error);
+                showImportStatus("Při importu došlo k technické chybě.", "error");
+            });
+        });
+
+        // Zobrazení statusu importu
+        function showImportStatus(message, type) {
+            importStatus.innerHTML = message;
+            importStatus.className = type;
+            importStatus.style.display = "block";
+            
+            if (type === "success") {
+                // Po úspěšném importu resetujeme formulář
+                setTimeout(() => {
+                    importForm.reset();
+                }, 2000);
+            }
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,552 @@
+{% extends 'base.html' %}
+
+{% block body_id %}detail-zaka-page{% endblock %}
+{% block title %}Detail žáka{% endblock %}
+
+{% block content %}
+<h1>Detail žáka</h1>
+
+<div class="header-container">
+    <div class="student-info-wrapper">
+        <table class="student-info-table">
+            <tr>
+                <th>Jméno</th>
+                <td>{{ zak.jmeno }}</td>
+            </tr>
+            <tr>
+                <th>Příjmení</th>
+                <td>{{ zak.prijmeni }}</td>
+            </tr>
+            <tr>
+                <th>Třída (aktuální)</th>
+                <td id="aktualni-trida">
+                    {% if zak.cislo_tridy and zak.pismeno_tridy %}
+                        {{ zak.cislo_tridy }}.{{ zak.pismeno_tridy }}
+                    {% else %}
+                        Absolvent
+                    {% endif %}
+                </td>
+            </tr>             
+            <tr>
+                <th>Školní rok odchodu</th>
+                <td>{{ zak.get_skolni_rok_odchodu() }}</td>
+            </tr>                                         
+                <th>Pohlaví</th>
+                <td>{{ zak.pohlavi }}</td>
+            </tr>
+        </table>        
+
+        <div class="logo-container">
+            {% if zak.pohlavi|lower == "dívka" %}
+                <img src="{{ url_for('static', filename='logo_zlepseni_divka.jpg') }}" alt="Logo dívka" class="student-logo">
+            {% else %}
+                <img src="{{ url_for('static', filename='logo_zlepseni_chlapec.jpg') }}" alt="Logo chlapec" class="student-logo">
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        let ulozenyRok = localStorage.getItem("skolniRok");
+        if (ulozenyRok) {
+            document.getElementById("skolni-rok-text").innerText = ulozenyRok;
+
+            fetch(`/ziskat_tridu?zak_id={{ zak.id }}&rok=${ulozenyRok}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const aktualniTridaElement = document.getElementById("aktualni-trida");
+                        if (aktualniTridaElement) {
+                            aktualniTridaElement.innerText = data.trida;
+                        }
+                    }
+                })
+                .catch(error => console.error("❌ Chyba při získávání třídy:", error));
+        }
+    });
+</script>
+
+<!-- Střední blok: Tabulka Hodnocení -->
+<div class="center-section">
+    {% if zak.pohlavi|lower == "chlapec" %}
+    <h2 class="grading-table-h2">Hodnocení - chlapci</h2>
+    <table class="grading-table chlapec">
+    {% else %}
+    <h2 class="grading-table-h2">Hodnocení - dívky</h2>
+    <table class="grading-table divka">
+    {% endif %}
+      <tr>
+        <th>Známka</th>
+        <th>Rozmezí bodů - průměr</th>
+      </tr>
+      <tr>
+        <td>1</td>
+        <td id="range_1">{{ bodove_rozmezi[1] }}</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td id="range_2">{{ bodove_rozmezi[2] }}</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td id="range_3">{{ bodove_rozmezi[3] }}</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td id="range_4">{{ bodove_rozmezi[4] }}</td>
+      </tr>
+    </table>
+</div>
+    
+<!-- Pravý blok: Info-boxy -->
+<div class="right-section">
+  <div class="info-box points-box" id="totalPoints">Body: 0</div>
+  <div class="info-box average-box" id="averagePoints">Průměr: 0</div>
+  <div class="info-box grade-box" id="finalGrade">Známka: -</div>
+  <div class="info-box discipline-count-box" id="completedDisciplines">Počet zapsaných disciplín: 0</div>
+</div>
+
+<form id="vykonForm">
+    <input type="hidden" id="selectedRocnik" name="rocnik" value="6">
+    <input type="hidden" name="zak_id" value="{{ zak.id }}">
+
+<!-- Obal pro celý blok výsledků výkonů -->
+<div class="performance-section">
+    <h2 class="discipline-table-h2">Výsledky výkonů</h2>
+    <table class="discipline-table {% if zak.pohlavi|lower == 'chlapec' %}chlapec{% else %}divka{% endif %}">
+        <thead>
+            <tr>
+                <th>Disciplína</th>
+                <th>Výkon</th>
+                <th>Jednotka</th>
+                <th>Nápověda</th>
+                <th>Body</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for disciplina in disciplines %}
+            {% if disciplina.nazev not in ["Referát", "Reprezentace školy", "Nošení cvičebního úboru", "Vedení rozcvičky", "Mimoškolní aktivita (např. screenshot aplikace sledující aktivitu)", "Aktivní přístup, snaha", "Zlepšení výkonu od posledního měření", "Pomoc s organizací", "Ostatní plusové body", "Nenošení cvičebního úboru", "Bezpečnostní riziko (gumička, boty, …)", "Nekázeň (rušení, neperespektování pokynů, …)", "Ostatní mínusové body"] %}
+            <tr>
+                <td>{{ disciplina.nazev }}</td>
+                <td>
+                    <input 
+                        type="text" 
+                        name="vykon_{{ disciplina.id }}" 
+                        id="vykon_{{ disciplina.id }}" 
+                        value="{{ vykon.hodnota if vykon else '' }}"
+                        data-id="{{ disciplina.id }}"
+                        data-typ="disciplina"
+                        inputmode="decimal"
+                        pattern="[0-9]*[.,]?[0-9]*"
+                    >
+                </td>
+                <td>{{ disciplina.jednotka or 'N/A' }}</td>
+                <td>{{ disciplina.napoveda or 'Není k dispozici' }}</td>
+                <td id="body_{{ disciplina.id }}" class="body-cell" data-body-id="{{ disciplina.id }}">0</td>
+            </tr>            
+            {% endif %}
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Obal pro bonusové body -->
+<div class="bonus-section">
+    <h2 class="bonus-table-h2">Bonusové body</h2>
+    <table class="bonus-table">
+        <tr>
+            <th>Disciplína</th>
+            <th>Výkon</th>
+            <th>Jednotka</th>
+            <th>Nápověda</th>
+            <th>Body</th>
+        </tr>
+        {% for disciplina in disciplines %}
+        {% if disciplina.nazev in ["Referát", "Reprezentace školy", "Nošení cvičebního úboru", "Vedení rozcvičky", "Mimoškolní aktivita (např. screenshot aplikace sledující aktivitu)", "Aktivní přístup, snaha", "Zlepšení výkonu od posledního měření", "Pomoc s organizací", "Ostatní plusové body"] %}
+        <tr>
+            <td>{{ disciplina.nazev }}</td>
+            <td>
+                <input 
+                    type="text" 
+                    name="vykon_{{ disciplina.id }}" 
+                    id="vykon_{{ disciplina.id }}" 
+                    value="{{ vykon.hodnota if vykon else '' }}"
+                    data-id="{{ disciplina.id }}"
+                    data-typ="bonus"
+                    inputmode="decimal"
+                    pattern="\d+"
+                    oninput="formatAndCalculate(this, '{{ disciplina.id }}')"
+                >
+            </td>
+            <td>{{ disciplina.jednotka or 'N/A' }}</td>
+            <td>{{ disciplina.napoveda or 'Není k dispozici' }}</td>
+            <td id="body_{{ disciplina.id }}" class="body-cell" data-body-id="{{ disciplina.id }}">0</td>
+        </tr>            
+        {% endif %}
+        {% endfor %}
+    </table>
+</div>
+
+<!-- Obal pro penalizační body -->
+<div class="penalty-section">
+    <h2 class="penalty-table-h2">Penalizační body</h2>
+    <table class="penalty-table">
+        <tr>
+            <th>Disciplína</th>
+            <th>Výkon</th>
+            <th>Jednotka</th>
+            <th>Nápověda</th>
+            <th>Body</th>
+        </tr>
+        {% for disciplina in disciplines %}
+        {% if disciplina.nazev in ["Nenošení cvičebního úboru", "Bezpečnostní riziko (gumička, boty, …)", "Nekázeň (rušení, neperespektování pokynů, …)", "Ostatní mínusové body"] %}
+        <tr>
+            <td>{{ disciplina.nazev }}</td>
+            <td>
+                <input 
+                    type="text" 
+                    name="vykon_{{ disciplina.id }}" 
+                    id="vykon{{ disciplina.id }}" 
+                    value="{{ vykon.hodnota if vykon else '' }}"
+                    data-id="{{ disciplina.id }}"
+                    data-typ="penalty"
+                    inputmode="decimal"
+                    pattern="\d+"
+                    oninput="formatAndCalculate(this, '{{ disciplina.id }}')"
+                >
+            </td>
+            <td>{{ disciplina.jednotka or 'N/A' }}</td>
+            <td>{{ disciplina.napoveda or 'Není k dispozici' }}</td>
+            <td id="body_{{ disciplina.id }}" class="body-cell" data-body-id="{{ disciplina.id }}">0</td>
+        </tr>            
+        {% endif %}
+        {% endfor %}
+    </table>
+</div>
+
+<p id="responseMessage"></p>
+
+<!-- Hlavní JavaScript -->
+<script>
+    // Pomocné funkce pro formátování a výpočet bodů
+    function formatAndCalculate(input, disciplinaId) {
+        let value = input.value.trim();
+
+        if (value.match(/^\d{1,2}:\d{2}$/)) {
+            let parts = value.split(":"), minuty = parseInt(parts[0], 10), sekundy = parseInt(parts[1], 10);
+            input.value = `${minuty}:${sekundy.toString().padStart(2, '0')}`;
+        }
+
+        calculatePoints(input, disciplinaId);
+    }
+
+    async function calculatePoints(input, disciplinaId) {
+        let vykon = input.value.trim();
+        if (!vykon) return;
+
+        try {
+            let response = await fetch("/ziskat_body", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ vykon: vykon, discipline_id: disciplinaId })
+            });
+            let data = await response.json();
+            let bodyCell = document.getElementById("body_" + disciplinaId);
+            if (!response.ok || data.error) {
+                bodyCell.innerText = "❌ Chyba!";
+                bodyCell.classList.add("chyba");
+            } else {
+                bodyCell.innerText = data.body;
+                bodyCell.classList.remove("chyba");
+            }
+        } catch (error) {
+            console.error("Chyba při získávání bodů:", error);
+            document.getElementById("body_" + disciplinaId).innerText = "❌ Chyba!";
+        }
+    }
+
+    async function submitPerformances() {
+        let formData = new FormData(document.getElementById("vykonForm"));
+        let data = {};
+
+        formData.forEach((value, key) => {
+            data[key] = value.trim(); // Odebrání mezer
+        });
+
+        try {
+            let response = await fetch("/ulozit_vykony", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+
+            let result = await response.json();
+            if (result.success) {
+                document.getElementById("responseMessage").innerText = "✅ Výkony uloženy!";
+                
+                // Po uložení aktualizujeme hodnoty v tabulce
+                nactiVykony(document.getElementById("selectedRocnik").value);
+            } else {
+                document.getElementById("responseMessage").innerText = "❌ Chyba při ukládání výkonů!";
+            }
+        } catch (error) {
+            console.error("Chyba při ukládání výkonů:", error);
+        }
+    }
+    
+    // Hlavní funkce pro načítání výkonů
+    async function nactiVykony(rocnik) {
+        const zakId = document.querySelector("[name='zak_id']").value;
+        console.log(`🔍 Načítám výkony pro žáka ${zakId}, ročník ${rocnik}`);
+    
+        // Vyčištění stávajících hodnot
+        document.querySelectorAll("[name^='vykon_']").forEach(input => {
+            input.value = "";
+        });
+        document.querySelectorAll("[id^='body_']").forEach(cell => {
+            cell.innerText = "0";
+            cell.classList.remove("error");
+        });
+    
+        try {
+            const response = await fetch(`/nacti_vykony?zak_id=${zakId}&rocnik=${rocnik}`);
+            const data = await response.json();
+    
+            if (data.success) {
+                console.log(`✅ Načteno ${data.vykony.length} výkonů`);
+                
+                data.vykony.forEach(vykon => {
+                    const vykonInput = document.querySelector(`[name='vykon_${vykon.discipline_id}']`);
+                    const bodyCell = document.getElementById(`body_${vykon.discipline_id}`);
+    
+                    if (vykonInput) {
+                        vykonInput.value = vykon.vykon;
+                    }
+                    if (bodyCell) {
+                        bodyCell.innerText = vykon.body;
+                    }
+                });
+                
+                // Aktualizace souhrnných informací
+                setTimeout(() => {
+                    updateTotalPointsAndGrade();
+                    updateCompletedDisciplines();
+                }, 100);
+            } else {
+                console.error(`❌ Chyba při načítání výkonů: ${data.error}`);
+            }
+        } catch (error) {
+            console.error(`❌ Chyba při načítání výkonů: ${error}`);
+        }
+    }
+    
+    // Funkce pro změnu ročníku
+    function zmenRocnik() {
+        const vybranyRocnik = document.getElementById("selectedRocnik").value;
+        
+        // Resetování informací před načtením nových dat
+        document.getElementById("totalPoints").innerText = "Body: 0";
+        document.getElementById("averagePoints").innerText = "Průměr: 0";
+        document.getElementById("finalGrade").innerText = "Známka: -";
+        document.getElementById("completedDisciplines").innerText = "Počet zapsaných disciplín: 0";
+        
+        // Načtení výkonů pro vybraný ročník
+        nactiVykony(vybranyRocnik);
+        
+        // Aktualizace bodových rozmezí pro známky
+        updateGradingTable();
+    }
+    
+    // Funkce pro výpočet bodů a známek
+    function updateTotalPointsAndGrade() {
+        let totalPoints = 0;
+        let totalForAverage = 0;
+        let completedDisciplines = 0;
+        let bonusPoints = 0;
+        let penaltyPoints = 0;
+        
+        document.querySelectorAll(".body-cell").forEach(cell => {
+            const value = parseFloat(cell.innerText) || 0;
+            const row = cell.closest("tr");
+            const table = row.closest("table");
+            
+            if (!table) return;
+            
+            const tableTitle = table.previousElementSibling ? table.previousElementSibling.innerText.trim() : "";
+            
+            if (tableTitle.includes("Výsledky výkonů")) {
+                if (value !== 0) {
+                    totalPoints += value;
+                    totalForAverage += value;
+                    completedDisciplines++;
+                }
+            } else if (tableTitle.includes("Bonusové body")) {
+                bonusPoints += value;
+                totalForAverage += value;
+            } else if (tableTitle.includes("Penalizační body")) {
+                penaltyPoints += value;
+                totalForAverage += value;
+            }
+        });
+        
+        const totalWithBonusAndPenalty = totalPoints + bonusPoints + penaltyPoints;
+        document.getElementById("totalPoints").innerText = `Body: ${totalWithBonusAndPenalty}`;
+        
+        const averagePoints = completedDisciplines > 0 ? Math.round(totalForAverage / completedDisciplines) : 0;
+        document.getElementById("averagePoints").innerText = `Průměr: ${averagePoints}`;
+        
+        const rocnikElement = document.getElementById("selectedRocnik");
+        const rocnik = rocnikElement ? parseInt(rocnikElement.value) : 0;
+        const zakPohlavi = document.querySelector("[name='zak_pohlavi']")?.value || "{{ zak.pohlavi }}".toLowerCase();
+        const baseReference = zakPohlavi.includes("chlapec") ? 130 : 110;
+        const referenceValue = baseReference * Math.pow(0.9, (9 - rocnik));
+        
+        // Získání mezí pro známky z tabulky hodnocení
+        const grade1Min = parseInt(document.getElementById("range_1")?.innerText.split(" - ")[0]) || 0;
+        const grade2Min = parseInt(document.getElementById("range_2")?.innerText.split(" - ")[0]) || 0;
+        const grade3Min = parseInt(document.getElementById("range_3")?.innerText.split(" - ")[0]) || 0;
+        
+        // Opravená logika známkování podle tabulky
+        let grade = "-";
+        if (completedDisciplines > 0) {
+            if (averagePoints >= grade1Min) {
+                grade = "1";
+            } else if (averagePoints >= grade2Min) {
+                grade = "2";
+            } else if (averagePoints >= grade3Min) {
+                grade = "3";
+            } else if (averagePoints >= 20) {
+                grade = "4";
+            } else {
+                grade = "5";
+            }
+        }
+        
+        document.getElementById("finalGrade").innerText = `Známka: ${grade}`;
+    }
+    
+    // Funkce pro aktualizaci počtu splněných disciplín
+    function updateCompletedDisciplines() {
+        let count = 0;
+        document.querySelectorAll(".discipline-table input").forEach(input => {
+            if (input.value.trim() !== "") {
+                count++;
+            }
+        });
+        document.getElementById("completedDisciplines").innerText = `Počet zapsaných disciplín: ${count}`;
+    }
+    
+    // Funkce pro aktualizaci tabulky hodnocení
+    function updateGradingTable() {
+        const rocnik = parseInt(document.getElementById("selectedRocnik").value);
+        const zakPohlavi = document.querySelector("[name='zak_pohlavi']")?.value || "{{ zak.pohlavi }}".toLowerCase();
+        
+        const baseReference = zakPohlavi.includes("chlapec") ? 130 : 110;
+        const referenceValue = baseReference * Math.pow(0.9, (9 - rocnik));
+        
+        const gradeRanges = {
+            1: `${Math.round(referenceValue * 1.0)} - 200`,
+            2: `${Math.round(referenceValue * 0.9)} - ${Math.round(referenceValue * 1.0) - 1}`,
+            3: `${Math.round(referenceValue * 0.8)} - ${Math.round(referenceValue * 0.9) - 1}`,
+            4: `20 - ${Math.round(referenceValue * 0.8) - 1}`
+        };
+        
+        for (let i = 1; i <= 4; i++) {
+            const rangeElement = document.getElementById(`range_${i}`);
+            if (rangeElement) {
+                rangeElement.innerText = gradeRanges[i];
+            }
+        }
+    }
+    
+    // Inicializace po načtení stránky
+    document.addEventListener("DOMContentLoaded", function() {
+        // Přidání hidden pole pro pohlaví, pokud neexistuje
+        if (!document.querySelector("[name='zak_pohlavi']")) {
+            const pohlavi = "{{ zak.pohlavi }}";
+            const pohlaviInput = document.createElement("input");
+            pohlaviInput.type = "hidden";
+            pohlaviInput.name = "zak_pohlavi";
+            pohlaviInput.value = pohlavi;
+            document.getElementById("vykonForm").appendChild(pohlaviInput);
+        }
+        
+        // Přidání event listenerů pro automatické ukládání
+        document.querySelectorAll("[name^='vykon_']").forEach(input => {
+            // Automatické ukládání při ztrátě fokusu
+            input.addEventListener("blur", async function() {
+                const disciplinaId = this.dataset.id || this.name.split("_")[1];
+                const vykon = this.value.trim();
+                const zakId = document.querySelector("[name='zak_id']").value;
+                const rocnik = document.getElementById("selectedRocnik").value;
+                const bodyCell = document.getElementById("body_" + disciplinaId);
+                
+                // Pokud je výkon prázdný, nastavíme body na "0"
+                if (vykon === "") {
+                    bodyCell.innerText = "0";
+                    updateTotalPointsAndGrade();
+                    updateCompletedDisciplines();
+                    return;
+                }
+                
+                console.log(`🔄 Ukládám výkon: žák=${zakId}, disciplína=${disciplinaId}, ročník=${rocnik}, hodnota=${vykon}`);
+                
+                try {
+                    const response = await fetch("/ulozit_vykon", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            zak_id: zakId,
+                            discipline_id: disciplinaId,
+                            rocnik: rocnik,
+                            vykon: vykon
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    if (result.success) {
+                        bodyCell.innerText = result.body;
+                        console.log(`✅ Výkon byl úspěšně uložen: ${result.body} bodů`);
+                    } else {
+                        console.error(`❌ Chyba při ukládání výkonu: ${result.error}`);
+                        bodyCell.innerText = "Chyba";
+                        bodyCell.classList.add("error");
+                    }
+                } catch (error) {
+                    console.error(`❌ Chyba při ukládání výkonu: ${error}`);
+                    bodyCell.innerText = "Chyba";
+                    bodyCell.classList.add("error");
+                }
+                
+                // Aktualizace souhrnných informací po uložení
+                setTimeout(() => {
+                    updateTotalPointsAndGrade();
+                    updateCompletedDisciplines();
+                }, 100);
+            });
+            
+            // Automatické ukládání při stisknutí Enter
+            input.addEventListener("keydown", function(event) {
+                if (event.key === "Enter") {
+                    this.blur(); // Ztratí fokus, což aktivuje událost blur
+                }
+            });
+            
+            // Sledování změn pro aktualizaci počtu disciplín
+            input.addEventListener("input", updateCompletedDisciplines);
+        });
+        
+        // Inicializace - načíst výkony podle aktuálního ročníku
+        const vybranyRocnik = document.getElementById("selectedRocnik").value;
+        nactiVykony(vybranyRocnik);
+        
+        // Spuštění aktualizací hned po načtení
+        updateGradingTable();
+        setTimeout(() => {
+            updateTotalPointsAndGrade();
+            updateCompletedDisciplines();
+        }, 500);
+    });
+</script>
+{% endblock %}

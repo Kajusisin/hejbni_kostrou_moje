@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+
+{% block title %}Výsledky hledání{% endblock %}
+
+{% block content %}
+<h1>Výsledky hledání pro "{{ query }}"</h1>
+
+<div class="vyhledavani-container">
+    <!-- ✅ Levá část: Seznam výsledků -->
+    <div class="vysledky-container">
+        <h2>Výsledky vyhledávání:</h2>
+        
+        {% if zaky %}
+            <ul>
+                {% for zak in zaky %}
+                <li>
+                    <a href="{{ url_for('detail_zaka', zak_id=zak.id) }}">
+                      {{ zak.prijmeni }} {{ zak.jmeno }} - {{ zak.get_trida(vybrany_skolni_rok) }}
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>❌ Žádný žák nebyl nalezen.</p>
+        {% endif %}
+    </div>
+
+    <!-- ✅ Pravá část: Logo nebo jiný obsah -->
+    <div class="logo-wrapper">
+            <img src="{{ url_for('static', filename='logo_vyhledavani.jpg') }}" alt="Zpět domů" class="logo-vyhledavani">
+        </p>
+    </div>
+</div>
+{% endblock %}

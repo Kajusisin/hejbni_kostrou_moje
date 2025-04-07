@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+
+{% block body_id %}trida-page{% endblock %}
+
+{% block title %}Seznam tříd{% endblock %}
+
+{% block content %}
+<h1>Seznam tříd</h1>
+
+<!-- ✅ Upravený kontejner podle vzoru detail_tridy.html -->
+<div class="seznam-container">
+    <!-- ✅ Levá část - Aktivní třídy -->
+    <div class="sloupec">
+        <h2>Aktivní třídy</h2>
+        {% if tridni_seznam %}
+            <ul>
+                {% for trida in tridni_seznam %}
+                <li>
+                    <a href="{{ url_for('detail_tridy', cislo=trida[0], pismeno=trida[1], rok=vybrany_rok) }}">
+                        {% if trida[1] and trida[1].startswith('.') %}
+                            {{ trida[0] }}{{ trida[1] }} ({{ trida[2] }} žáků)
+                        {% else %}
+                            {{ trida[0] }}.{{ trida[1] }} ({{ trida[2] }} žáků)
+                        {% endif %}
+                    </a>
+                </li>
+                {% endfor %}      
+            </ul>
+        {% else %}
+            <p>Žádné třídy nejsou k dispozici.</p>
+        {% endif %}
+        
+        <!-- ✅ Logo pro aktivní třídy -->
+        <img src="{{ url_for('static', filename='logo_classes.jpg') }}" alt="Logo Classes" class="logo-classes">
+    </div>
+    
+    <!-- ✅ Oddělovací čára mezi sloupci -->
+    <div class="oddeleni"></div>
+    
+    <!-- ✅ Pravá část - Absolventi -->
+    <div class="sloupec">
+        <h2>Archiv - Absolventi</h2>
+        {% if absolventi_tridy %}
+            <ul>
+                {% for trida in absolventi_tridy %}
+                <li>
+                    <a href="{{ url_for('detail_tridy', cislo=trida[0], pismeno=trida[1], rok=vybrany_rok, absolvent_rok=trida[2]) }}">
+                        {% if trida[1] and trida[1].startswith('.') %}
+                            {{ trida[0] }}{{ trida[1] }} {{ trida[2] }} - {{ trida[3] }} žáků
+                        {% else %}
+                            {{ trida[0] }}.{{ trida[1] }} {{ trida[2] }} - {{ trida[3] }} žáků
+                        {% endif %}
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>Žádní absolventi nejsou k dispozici.</p>
+        {% endif %}
+        
+        <!-- ✅ Logo pro absolventy -->
+        <img src="{{ url_for('static', filename='logo_absolventi.jpg') }}" alt="Logo Absolventi" class="logo-absolventi">
+    </div>
+</div>
+{% endblock %}

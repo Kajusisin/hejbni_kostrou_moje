@@ -1,0 +1,418 @@
+{% extends 'base.html' %}
+
+{% block body_id %}zebricky_a_statistiky-page{% endblock %}
+
+{% block title %}Žebříčky a statistiky{% endblock %}
+
+{% block content %}
+<h1>Žebříčky a statistiky</h1>
+
+<!-- Loga - sekce s obrázky -->
+<div class="content-zebricky_a_statistiky">
+    <div class="logo-zebricek_vykonu-container">
+        <img src="{{ url_for('static', filename='zebricek_vykonu.jpg') }}" alt="Žebříček výkonů" class="logo-zebricek_vykonu">
+    </div>
+    
+    <div class="logo-statistiky-container">
+        <img src="{{ url_for('static', filename='logo_statistiky.jpg') }}" alt="Statistiky" class="logo-statistiky">
+    </div>
+    
+    <div class="logo-rekordy-container">
+        <img src="{{ url_for('static', filename='logo_rekordy.jpg') }}" alt="Rekordy" class="logo-rekordy">
+    </div>
+</div>
+
+<!-- Filtry pro žebříčky a statistiky -->
+<div class="filter-section">
+    <form id="filter-form" action="{{ url_for('zebricky_a_statistiky') }}" method="GET" class="zebricek-filters">
+        <div class="filter-group">
+            <label for="skolni_rok">Školní rok:</label>
+            <select id="skolni_rok" name="skolni_rok">
+                {% for rok in skolni_roky %}
+                <option value="{{ rok }}" {% if rok == vybrany_skolni_rok %}selected{% endif %}>{{ rok }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="filter-group">
+            <label for="rocnik">Ročník:</label>
+            <select id="rocnik" name="rocnik">
+                <option value="all" {% if vybrany_rocnik == "all" %}selected{% endif %}>Všechny ročníky</option>
+                <option value="6" {% if vybrany_rocnik == "6" %}selected{% endif %}>6. ročník</option>
+                <option value="7" {% if vybrany_rocnik == "7" %}selected{% endif %}>7. ročník</option>
+                <option value="8" {% if vybrany_rocnik == "8" %}selected{% endif %}>8. ročník</option>
+                <option value="9" {% if vybrany_rocnik == "9" %}selected{% endif %}>9. ročník</option>
+            </select>
+        </div>
+        
+        <button type="submit" class="filter-btn">Použít filtry</button>
+    </form>
+</div>
+
+<!-- Hlavní kontejner pro obsah žebříčků a statistik -->
+<div class="zebricek-container">
+    <!-- 1. Celkové bodové žebříčky -->
+    <section class="zebricek-section">
+        <h2 class="zebricek-heading">Celkové bodové žebříčky</h2>
+        <div class="zebricek-content">
+            <div class="zebricek-sloupec">
+                <h3 class="zebricek-subheading">Chlapci - TOP 10</h3>
+                <table class="zebricek-table">
+                    <thead>
+                        <tr>
+                            <th>Pořadí</th>
+                            <th>Jméno</th>
+                            <th>Třída</th>
+                            <th>Průměrný počet bodů</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for i in range(top_chlapci|length) %}
+                        <tr>
+                            <td>{{ i+1 }}</td>
+                            <td>{{ top_chlapci[i].jmeno }}</td>
+                            <td>{{ top_chlapci[i].trida }}</td>
+                            <td>{{ top_chlapci[i].prumer_bodu }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" class="no-data">Žádná data nejsou k dispozici</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="zebricek-sloupec">
+                <h3 class="zebricek-subheading">Dívky - TOP 10</h3>
+                <table class="zebricek-table">
+                    <thead>
+                        <tr>
+                            <th>Pořadí</th>
+                            <th>Jméno</th>
+                            <th>Třída</th>
+                            <th>Průměrný počet bodů</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for i in range(top_divky|length) %}
+                        <tr>
+                            <td>{{ i+1 }}</td>
+                            <td>{{ top_divky[i].jmeno }}</td>
+                            <td>{{ top_divky[i].trida }}</td>
+                            <td>{{ top_divky[i].prumer_bodu }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" class="no-data">Žádná data nejsou k dispozici</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- 2. Žebříčky podle disciplín -->
+    <section class="zebricek-section">
+        <h2 class="zebricek-heading">Žebříčky podle disciplín</h2>
+        <div class="zebricek-content">
+            <div class="disciplina-tabs">
+                {% for discipline in disciplines %}
+                {% set discipline_id = discipline.nazev|replace(' ', '_') %}
+                <button class="disciplina-tab {% if loop.first %}active{% endif %}" 
+                        onclick="openDisciplina(event, '{{ discipline_id }}')">
+                    {{ discipline.nazev }}
+                </button>
+                {% endfor %}
+            </div>
+            
+            {% for discipline in disciplines %}
+            <div id="{{ discipline.nazev|replace(' ', '_') }}" class="disciplina-content" 
+                 {% if loop.first %}style="display:block"{% else %}style="display:none"{% endif %}>
+                <div class="zebricek-sloupec">
+                    <h3 class="zebricek-subheading">Chlapci - {{ discipline.nazev }}</h3>
+                    <table class="zebricek-table">
+                        <thead>
+                            <tr>
+                                <th>Pořadí</th>
+                                <th>Jméno</th>
+                                <th>Třída</th>
+                                <th>Výkon</th>
+                                <th>Školní rok</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if discipline_performances.get(discipline.nazev) and discipline_performances[discipline.nazev].chlapci %}
+                                {% for i in range(discipline_performances[discipline.nazev].chlapci|length) %}
+                                <tr>
+                                    <td>{{ i+1 }}</td>
+                                    <td>{{ discipline_performances[discipline.nazev].chlapci[i].jmeno }}</td>
+                                    <td>{{ discipline_performances[discipline.nazev].chlapci[i].trida }}</td>
+                                    <td>{{ discipline_performances[discipline.nazev].chlapci[i].vykon }} {{ discipline_performances[discipline.nazev].jednotka }}</td>
+                                    <td>{{ discipline_performances[discipline.nazev].chlapci[i].skolni_rok }}</td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="5" class="no-data">Žádná data nejsou k dispozici</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="zebricek-sloupec">
+                    <h3 class="zebricek-subheading">Dívky - {{ discipline.nazev }}</h3>
+                    <table class="zebricek-table">
+                        <thead>
+                            <tr>
+                                <th>Pořadí</th>
+                                <th>Jméno</th>
+                                <th>Třída</th>
+                                <th>Výkon</th>
+                                <th>Školní rok</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if discipline_performances.get(discipline.nazev) and discipline_performances[discipline.nazev].divky %}
+                                {% for i in range(discipline_performances[discipline.nazev].divky|length) %}
+                                <tr>
+                                    <td>{{ i+1 }}</td>
+                                    <td>{{ discipline_performances[discipline.nazev].divky[i].jmeno }}</td>
+                                    <td>{{ discipline_performances[discipline.nazev].divky[i].trida }}</td>
+                                    <td>{{ discipline_performances[discipline.nazev].divky[i].vykon }} {{ discipline_performances[discipline.nazev].jednotka }}</td>
+                                    <td>{{ discipline_performances[discipline.nazev].divky[i].skolni_rok }}</td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="5" class="no-data">Žádná data nejsou k dispozici</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <!-- 3. Školní rekordy -->
+    <section class="zebricek-section">
+        <h2 class="zebricek-heading">Školní rekordy</h2>
+        <div class="zebricek-content">
+            <div class="record-tabs">
+                <button class="record-tab active" onclick="openRecord(event, 'aktualni')">Aktuální školní rok</button>
+                <button class="record-tab" onclick="openRecord(event, 'historicke')">Historické rekordy</button>
+            </div>
+            
+            <div id="aktualni" class="record-content" style="display:block;">
+                <div class="zebricek-sloupec">
+                    <h3 class="zebricek-subheading">Chlapci - Rekordy {{ vybrany_skolni_rok }}</h3>
+                    <table class="zebricek-table">
+                        <thead>
+                            <tr>
+                                <th>Disciplína</th>
+                                <th>Jméno</th>
+                                <th>Třída</th>
+                                <th>Výkon</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for discipline in disciplines %}
+                                {% if aktualni_rekordy.chlapci.get(discipline.nazev) %}
+                                <tr>
+                                    <td>{{ discipline.nazev }}</td>
+                                    <td>{{ aktualni_rekordy.chlapci[discipline.nazev].jmeno }}</td>
+                                    <td>{{ aktualni_rekordy.chlapci[discipline.nazev].trida }}</td>
+                                    <td>{{ aktualni_rekordy.chlapci[discipline.nazev].vykon }} {{ discipline.jednotka }}</td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td>{{ discipline.nazev }}</td>
+                                    <td colspan="3" class="no-data">Žádný záznam</td>
+                                </tr>
+                                {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="zebricek-sloupec">
+                    <h3 class="zebricek-subheading">Dívky - Rekordy {{ vybrany_skolni_rok }}</h3>
+                    <table class="zebricek-table">
+                        <thead>
+                            <tr>
+                                <th>Disciplína</th>
+                                <th>Jméno</th>
+                                <th>Třída</th>
+                                <th>Výkon</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for discipline in disciplines %}
+                                {% if aktualni_rekordy.divky.get(discipline.nazev) %}
+                                <tr>
+                                    <td>{{ discipline.nazev }}</td>
+                                    <td>{{ aktualni_rekordy.divky[discipline.nazev].jmeno }}</td>
+                                    <td>{{ aktualni_rekordy.divky[discipline.nazev].trida }}</td>
+                                    <td>{{ aktualni_rekordy.divky[discipline.nazev].vykon }} {{ discipline.jednotka }}</td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td>{{ discipline.nazev }}</td>
+                                    <td colspan="3" class="no-data">Žádný záznam</td>
+                                </tr>
+                                {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div id="historicke" class="record-content" style="display:none;">
+                <!-- Obsah pro historické rekordy by byl podobný jako pro aktuální rekordy -->
+                <div class="zebricek-sloupec full-width">
+                    <p class="info-message">Historické rekordy budou implementovány v další verzi.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 4. Výkonové statistiky tříd -->
+    <section class="zebricek-section">
+        <h2 class="zebricek-heading">Výkonové statistiky tříd</h2>
+        <div class="zebricek-content">
+            <div class="zebricek-sloupec full-width">
+                <h3 class="zebricek-subheading">Průměrný počet bodů podle tříd</h3>
+                <table class="zebricek-table">
+                    <thead>
+                        <tr>
+                            <th>Pořadí</th>
+                            <th>Třída</th>
+                            <th>Průměrný počet bodů</th>
+                            <th>Počet žáků</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for i in range(tridy_statistiky|length) %}
+                        <tr>
+                            <td>{{ i+1 }}</td>
+                            <td>{{ tridy_statistiky[i].trida }}</td>
+                            <td>{{ tridy_statistiky[i].prumer_bodu }}</td>
+                            <td>{{ tridy_statistiky[i].pocet_zaku }}</td>
+                        </tr>
+                        {% else %}
+                        <tr></tr>
+                            <td colspan="4" class="no-data">Žádná data nejsou k dispozici</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- 5. Osobní rekordy žáků - nová sekce -->
+    <section class="zebricek-section">
+        <h2 class="zebricek-heading">Osobní rekordy žáků</h2>
+        <div class="zebricek-content">
+            <div class="personal-record-selector">
+                <form action="{{ url_for('zebricky_a_statistiky') }}" method="GET" class="osobni-rekordy-form">
+                    <input type="hidden" name="skolni_rok" value="{{ vybrany_skolni_rok }}">
+                    <input type="hidden" name="rocnik" value="{{ vybrany_rocnik }}">
+                    
+                    <div class="form-group">
+                        <label for="zak_id">Vyberte žáka:</label>
+                        <select id="zak_id" name="zak_id" required onchange="this.form.submit()">
+                            <option value="">-- Vyberte žáka --</option>
+                            {% for zak in vsichni_zaci %}
+                                <option value="{{ zak.id }}" {% if vybrany_zak_id == zak.id|string %}selected{% endif %}>
+                                    {{ zak.prijmeni }} {{ zak.jmeno }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </form>
+            </div>
+            
+            {% if osobni_rekordy %}
+                <h3 class="zebricek-subheading">Osobní rekordy: {{ osobni_rekordy.jmeno }}</h3>
+                <div class="zebricek-sloupec full-width">
+                    <table class="zebricek-table osobni-rekordy-table">
+                        <thead>
+                            <tr>
+                                <th>Disciplína</th>
+                                <th>Nejlepší výkon</th>
+                                <th>Ročník</th>
+                                <th>Školní rok</th>
+                                <th>Získané body</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for discipline in disciplines %}
+                                {% if osobni_rekordy.discipliny.get(discipline.nazev) %}
+                                <tr>
+                                    <td>{{ discipline.nazev }}</td>
+                                    <td>{{ osobni_rekordy.discipliny[discipline.nazev].vykon }} {{ osobni_rekordy.discipliny[discipline.nazev].jednotka }}</td>
+                                    <td>{{ osobni_rekordy.discipliny[discipline.nazev].rocnik }}.</td>
+                                    <td>{{ osobni_rekordy.discipliny[discipline.nazev].skolni_rok }}</td>
+                                    <td>{{ osobni_rekordy.discipliny[discipline.nazev].body }}</td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td>{{ discipline.nazev }}</td>
+                                    <td colspan="4" class="no-data">Není záznam</td>
+                                </tr>
+                                {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="zebricek-sloupec full-width">
+                    <p class="select-message">Vyberte žáka pro zobrazení jeho osobních rekordů.</p>
+                </div>
+            {% endif %}
+        </div>
+    </section>
+</div>
+
+<script>
+// Funkce pro přepínání záložek disciplín
+function openDisciplina(evt, disciplinaId) {
+    // Skryjeme všechny obsahy disciplín
+    var disciplinaContents = document.getElementsByClassName("disciplina-content");
+    for (var i = 0; i < disciplinaContents.length; i++) {
+        disciplinaContents[i].style.display = "none";
+    }
+    
+    // Odstraníme třídu "active" ze všech záložek
+    var disciplinaTabs = document.getElementsByClassName("disciplina-tab");
+    for (var i = 0; i < disciplinaTabs.length; i++) {
+        disciplinaTabs[i].className = disciplinaTabs[i].className.replace(" active", "");
+    }
+    
+    // Zobrazíme vybraný obsah a přidáme třídu "active" tlačítku
+    document.getElementById(disciplinaId).style.display = "block";
+    evt.currentTarget.className += " active";
+}
+
+// Funkce pro přepínání záložek rekordů
+function openRecord(evt, recordId) {
+    // Skryjeme všechny obsahy rekordů
+    var recordContents = document.getElementsByClassName("record-content");
+    for (var i = 0; i < recordContents.length; i++) {
+        recordContents[i].style.display = "none";
+    }
+    
+    // Odstraníme třídu "active" ze všech záložek
+    var recordTabs = document.getElementsByClassName("record-tab");
+    for (var i = 0; i < recordTabs.length; i++) {
+        recordTabs[i].className = recordTabs[i].className.replace(" active", "");
+    }
+    
+    // Zobrazíme vybraný obsah a přidáme třídu "active" tlačítku
+    document.getElementById(recordId).style.display = "block";
+    evt.currentTarget.className += " active";
+}
+</script>
+{% endblock %}

@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+
+{% block title %}Seznam žáků{% endblock %}
+
+{% block content %}
+<h1>Seznam žáků</h1>
+
+<div class="seznam-container">
+    <!-- Sloupec pro chlapce -->
+    <div class="sloupec">
+        <div class="logo-wrapper">
+            <img src="{{ url_for('static', filename='logo_chlapec.jpg') }}" alt="Logo Chlapci" class="logo-chlapec">
+        </div>
+        <h2>Chlapci 👦</h2>
+        <!-- Filtrujeme pouze aktivní žáky (ne absolventy) -->
+        {% set chlapci = zaky | selectattr("pohlavi", "equalto", "chlapec") | list %}
+        {% set aktivni_chlapci = [] %}
+        {% for zak in chlapci %}
+            {% set trida = zak.get_trida(vybrany_skolni_rok) %}
+            {% if "Absolvent" not in trida and "Před nástupem" not in trida %}
+                {% set _ = aktivni_chlapci.append(zak) %}
+            {% endif %}
+        {% endfor %}
+        
+        {% if aktivni_chlapci %}
+            <ul>
+                {% for zak in aktivni_chlapci %}
+                <li>
+                    <a href="/zak/{{ zak.id }}">
+                        {{ zak.prijmeni }} {{ zak.jmeno }} - {{ zak.get_trida(vybrany_skolni_rok) }}
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>Žádní aktivní chlapci nejsou zapsaní.</p>
+        {% endif %}
+    </div>
+
+    <!-- 🟢 Oddělovací čára mezi sloupci -->
+    <div class="oddeleni"></div>
+
+    <!-- Sloupec pro dívky -->
+    <div class="sloupec">
+        <div class="logo-wrapper">
+            <img src="{{ url_for('static', filename='logo_divka.jpg') }}" alt="Logo Dívky" class="logo-divka">
+        </div>
+        <h2>Dívky 👧</h2>
+        <!-- Filtrujeme pouze aktivní žákyně (ne absolventky) -->
+        {% set divky = zaky | selectattr("pohlavi", "equalto", "dívka") | list %}
+        {% set aktivni_divky = [] %}
+        {% for zak in divky %}
+            {% set trida = zak.get_trida(vybrany_skolni_rok) %}
+            {% if "Absolvent" not in trida and "Před nástupem" not in trida %}
+                {% set _ = aktivni_divky.append(zak) %}
+            {% endif %}
+        {% endfor %}
+        
+        {% if aktivni_divky %}
+            <ul>
+                {% for zak in aktivni_divky %}
+                <li>
+                    <a href="/zak/{{ zak.id }}">
+                        {{ zak.prijmeni }} {{ zak.jmeno }} - {{ zak.get_trida(vybrany_skolni_rok) }}
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>Žádné aktivní dívky nejsou zapsané.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

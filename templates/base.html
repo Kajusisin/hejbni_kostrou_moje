@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head> 
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#f5f5f5"> <!-- Barva záhlaví prohlížeče v mobilních zařízeních -->
+    <meta name="format-detection" content="telephone=no"> <!-- Zabrání automatickému formátování telefonních čísel -->
+    <meta name="mobile-web-app-capable" content="yes"> <!-- Pro možnost přidání na plochu jako aplikace -->
+    <meta name="apple-mobile-web-app-capable" content="yes"> <!-- Pro iOS zařízení -->
+    <title>{% block title %}Hejbni kostrou!{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <!-- Přidání odkazu na favicon -->
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link rel="dns-prefetch" href="https://fonts.gstatic.com">
+
+    <style>
+        /* 🔹 ZÁKLADNÍ NASTAVENÍ STRÁNKY */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* 🔹 BODY - základní nastavení */
+        body {
+            font-family: "Comic Sans MS", cursive, sans-serif;
+            background-color: transparent !important;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: flex-start;
+            padding: 0 4vw; /* Převedeno z cm na vw */
+            width: 100%;
+        }
+
+        /* 🔹 POZADÍ STRÁNKY */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url("{{ url_for('static', filename='pozadi.jpg') }}") center / 110% no-repeat fixed;
+            opacity: 0.2;
+            z-index: -100;
+        }
+
+        /* 🔹 HLAVNÍ KONTEJNER */
+        .container {
+            max-width: 100%;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+
+        /* 🔹 HLAVNÍ NADPIS */
+        h1 {
+            font-size: 4vw;
+            font-weight: bold;
+            font-style: italic;
+            color: black;
+            text-shadow: 0.2vw 0.2vw 0.3vw rgba(0, 0, 0, 0.6);
+            text-align: left;
+            line-height: 1.2;
+            letter-spacing: 0.03vw;
+            width: 100%;
+            margin-top: 1.5vw;
+            margin-bottom: 1.2vw;
+            padding: 0;
+            margin-left: -4.5vw;
+            white-space: nowrap;
+        }
+
+        /* 🔹 ŠKOLNÍ ROK V PRAVÉM ROHU */
+        .skolni-rok {
+            position: absolute;
+            top: 0.5vw;
+            right: 3vw;
+            font-size: clamp(0.8rem, 1vw, 1.1rem);
+            font-weight: normal;
+        }
+
+        /* 🔹 LOGO DOMŮ */
+        .logo-home {
+            position: absolute;
+            top: 3vw;
+            right: 3vw;
+            z-index: 1000;
+            pointer-events: auto;
+        }
+
+        .logo-home img {
+            width: clamp(30px, 3vw, 50px);
+            height: auto;
+            cursor: pointer;
+        }
+
+        /* 🔹 Obal pro obsah s paddingem pro mobilní zařízení */
+        .page-wrapper {
+            width: 100%;
+            padding: 0 1vw;
+        }
+
+        /* 📱 RESPONSIVITA pro mobilní zařízení */
+        @media (max-width: 768px) {
+            body {
+                padding: 0 3vw;
+            }
+
+            .container {
+                width: 100%;
+                padding: 0 1vw;
+            }
+
+            h1 {
+                font-size: 2.2rem !important;
+                text-align: center !important;
+                white-space: normal !important;
+                margin-left: 0;
+                margin-top: 3rem;
+            }
+
+            .content-container, 
+            .trida-content-container, 
+            .seznam-container {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+                gap: 4vw;
+                width: 95% !important;
+                margin: 0 auto;
+            }
+
+            .logo-trida-container, 
+            .logo-wrapper {
+                width: 100%;
+                display: flex;
+                justify-content: center;
+                margin-top: 2vw;
+            }
+
+            .logo-trida, 
+            .logo-vyhledavani, 
+            .logo-chlapec, 
+            .logo-divka {
+                max-width: 60vw;
+                height: auto;
+            }
+
+            .sloupec, 
+            .seznam-trid-container {
+                width: 90%;
+                text-align: center;
+                margin-left: auto;
+                margin-right: auto;
+            }
+
+            .oddeleni {
+                display: none;
+            }
+
+            .skolni-rok {
+                top: 0.5rem;
+                right: 1rem;
+                font-size: 0.8rem;
+            }
+
+            .logo-home {
+                top: 1.8rem;
+                right: 1rem;
+            }
+
+            .student-info-table {
+                margin-left: 0 !important;
+                width: 90vw;
+            }
+
+            .info-box {
+                margin-left: auto;
+                margin-right: auto;
+            }
+
+            .left-side, .right-side {
+                margin-left: auto;
+                margin-right: auto;
+                text-align: center;
+            }
+
+            .discipline-table th,
+            .bonus-table th,
+            .penalty-table th,
+            .grading-table th {
+                font-size: 0.9rem;
+            }
+
+            .discipline-table td,
+            .bonus-table td,
+            .penalty-table td,
+            .grading-table td {
+                font-size: 0.85rem;
+                padding: 0.5rem;
+            }
+        }
+
+        /* Pro menší mobilní zařízení */
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 1.8rem !important;
+                margin-top: 4rem;
+            }
+
+            .button, 
+            .search-container, 
+            .skolni-rok-container {
+                width: 90vw !important;
+                margin-left: auto !important;
+                margin-right: auto !important;
+            }
+
+            .headline-container {
+                position: static !important;
+                width: 90% !important;
+                margin: 1rem auto !important;
+                top: 0 !important;
+                left: 0 !important;
+            }
+
+            .headline-container h2 {
+                font-size: 1rem !important;
+            }
+
+            .menu-container {
+                position: static !important;
+                width: 100% !important;
+                margin: 0 auto !important;
+                right: 0 !important;
+            }
+        }
+    </style>
+</head>
+
+<body id="{% block body_id %}{% endblock %}">
+
+    <!-- 🔹 Školní rok v pravém horním rohu -->
+    <div class="skolni-rok">
+        📅 Školní rok: <span id="skolni-rok-text">---</span>
+    </div>    
+
+    <!-- 🔹 Logo „Domů" -->
+    <div class="logo-home">
+        <a href="{{ url_for('home') }}">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="Domů">
+        </a>
+    </div>
+
+    <!-- Přidejte toto do <body> hned za hlavičku -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for category, message in messages %}
+                    <div class="flash-message {{ category }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- 🔹 Hlavní obsah stránky -->
+    <div class="page-wrapper">
+        <div class="container">
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+
+<!-- ✅ Skript pro správné načítání a aktualizaci školního roku -->
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        // Synchronizace localStorage a session při načtení stránky
+        const ulozenySkolniRok = localStorage.getItem("skolniRok");
+        if (ulozenySkolniRok) {
+            // Vybereme správný rok v dropdown menu, pokud existuje
+            const skolniRokSelect = document.getElementById("skolniRok");
+            if (skolniRokSelect) {
+                skolniRokSelect.value = ulozenySkolniRok;
+            }
+            
+            // Aktualizujeme text roku v UI
+            const skolniRokText = document.getElementById("skolni-rok-text");
+            if (skolniRokText) {
+                skolniRokText.innerText = ulozenySkolniRok;
+            }
+            
+            // Pošleme async request pro aktualizaci session na serveru
+            fetch("/synchronizovat_rok", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ rok: ulozenySkolniRok })
+            }).catch(error => console.error("Chyba synchronizace roku:", error));
+        } else {
+            // Pokud rok není v localStorage, použijeme výchozí hodnotu
+            let defaultRok = getDefaultSkolniRok();
+            localStorage.setItem("skolniRok", defaultRok);
+            
+            const skolniRokText = document.getElementById("skolni-rok-text");
+            if (skolniRokText) {
+                skolniRokText.innerText = defaultRok;
+            }
+            
+            // Synchronizace s backend
+            fetch("/synchronizovat_rok", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ rok: defaultRok })
+            }).catch(error => console.error("Chyba synchronizace roku:", error));
+        }
+        
+        let skolniRokText = document.getElementById("skolni-rok-text");
+        let skolniRokSelect = document.getElementById("skolniRok");
+
+        // 🟢 Funkce pro určení aktuálního školního roku
+        function getDefaultSkolniRok() {
+            let dnes = new Date();
+            let rok = dnes.getFullYear();
+            let mesic = dnes.getMonth() + 1; // JavaScript měsíce jsou 0-11
+
+            return mesic >= 9 ? `${rok}/${rok + 1}` : `${rok - 1}/${rok}`;
+        }
+
+        console.log("📅 Nastavený školní rok:", localStorage.getItem("skolniRok"));
+
+        // 🟢 Event listener pro změnu školního roku
+        if (skolniRokSelect) {
+            skolniRokSelect.addEventListener("change", function () {
+                let vybranyRok = skolniRokSelect.value;
+
+                // Uložíme nový rok do localStorage a aktualizujeme text
+                localStorage.setItem("skolniRok", vybranyRok);
+                if (skolniRokText) {
+                    skolniRokText.innerText = vybranyRok;
+                }
+
+                console.log("📅 Školní rok změněn na:", vybranyRok);
+
+                // 🟢 Odeslání změny na server
+                fetch("/zmen_skolni_rok", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ rok: vybranyRok })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.message) {
+                        alert("✅ " + data.message);
+                        
+                        // Kontrola zda máme provést reload stránky
+                        const currentPath = window.location.pathname;
+                        if (currentPath.includes("/tridy") || 
+                            currentPath.includes("/detail_tridy") || 
+                            currentPath.includes("/zaci")) {
+                            // Tyto stránky je potřeba reloadovat pro správné zobrazení
+                            location.reload();
+                        }
+                    } else {
+                        alert("❌ Chyba: " + (data.error || "Neznámá chyba."));
+                    }
+                })
+                .catch(error => {
+                    console.error("❌ Chyba při komunikaci se serverem:", error);
+                    alert("❌ Chyba při změně školního roku.");
+                });
+            });
+        }
+    });
+</script>
+
+<!-- Optimalizace pro dotykové zařízení -->
+<script>
+    // Funkce pro lepší ovládání na dotykových zařízeních
+    document.addEventListener('DOMContentLoaded', function() {
+        // Nastavení aktuálního data pro tisk
+        const today = new Date();
+        document.body.setAttribute('data-datum', today.toLocaleDateString('cs-CZ'));
+        
+        // Zjištění, zda jde o dotykové zařízení
+        const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+        
+        if (isTouchDevice) {
+            // Přidání třídy k tělu dokumentu pro CSS úpravy
+            document.body.classList.add('touch-device');
+            
+            // Přizpůsobení inputů pro numerické hodnoty
+            const numericInputs = document.querySelectorAll('.discipline-table input, .bonus-table input, .penalty-table input');
+            numericInputs.forEach(input => {
+                // Pro numerické inputy nastavíme numerickou klávesnici
+                if (input.type === 'text' && !input.hasAttribute('pattern')) {
+                    input.setAttribute('inputmode', 'decimal');
+                }
+            });
+            
+            // Obalení tabulek pro horizontální scrollování
+            const tables = document.querySelectorAll('.discipline-table, .bonus-table, .penalty-table, .grading-table, .student-info-table');
+            tables.forEach(table => {
+                // Pokud tabulka ještě není v kontejneru pro scrollování
+                if (!table.parentElement.classList.contains('table-container')) {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'table-container';
+                    table.parentNode.insertBefore(wrapper, table);
+                    wrapper.appendChild(table);
+                }
+            });
+        }
+    });
+</script>
+
+</body>
+</html>
