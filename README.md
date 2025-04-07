@@ -1,0 +1,1 @@
+# hejbni_kostrou_moje
